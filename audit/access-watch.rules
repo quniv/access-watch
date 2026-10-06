@@ -1,20 +1,21 @@
 ## access-watch audit rules (OPTIONAL, root-level)
-## Install to /etc/audit/rules.d/access-watch.rules then: sudo augenrules --load
+## Installed by: ./install.sh --audit
+## @HOME@ is replaced with the installing user's $HOME (override with AW_HOME).
 ##
 ## auditd runs as root and can see actions by ALL users, including 'it'.
 ## It is the only layer here that can observe a higher-privileged user's
 ## file access and commands. It cannot observe Defender Live Response, which
 ## acts through the mdatp agent at kernel/cloud level.
 ##
-## Edit the paths/uid below before loading. Lines starting with # are ignored.
+## Edit the uid below if needed. Lines starting with # are ignored.
 
 ## --- Watch access to your private data directory (create it first) ---
 ## Change the path to the directory you actually keep private files in.
--w /home/quyetdoan/private -p rwxa -k aw_private
+-w @HOME@/private -p rwxa -k aw_private
 
 ## --- Watch reads of your shell history and ssh keys ---
--w /home/quyetdoan/.bash_history -p rwa -k aw_sensitive
--w /home/quyetdoan/.ssh -p rwa -k aw_sensitive
+-w @HOME@/.bash_history -p rwa -k aw_sensitive
+-w @HOME@/.ssh -p rwa -k aw_sensitive
 
 ## --- Every use of sudo ---
 -w /usr/bin/sudo -p x -k aw_sudo

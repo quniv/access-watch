@@ -7,10 +7,11 @@
 #   - creates the config dir and a 600-perm config from your example
 #   - enables linger so the watchers run even when you are not logged in
 #
-# The optional auditd layer is root-level and NOT installed here; see README.
+# The optional auditd layer is root-level and only installed with --audit.
 #
 # Usage:
 #   ./install.sh            # install / update
+#   ./install.sh --audit    # install the optional auditd layer (uses sudo)
 #   ./install.sh --uninstall
 set -euo pipefail
 
@@ -37,7 +38,51 @@ uninstall() {
   exit 0
 }
 
+install_audit() {
+  # Paths in the rules file belong to the user being protected, so take them
+  # from the invoking user's environment, not root's.
+  local target_home="${AW_HOME:-$HOME}"
+  if [ "$(id -u)" -eq 0 ] && [ -z "${AW_HOME:-}" ]; then
+    warn "Run --audit as your normal user (it calls sudo itself), or set AW_HOME."
+    exit 1
+  fi
+  if ! command -v augenrules >/dev/null 2>&1 && ! sudo test -x /sbin/augenrules; then
+    warn "auditd not found. Install it first: sudo apt install -y auditd audispd-plugins"
+    exit 1
+  fi
+
+  log "Installing auditd layer for home: $target_home"
+  [ -d "$target_home/private" ] || warn "$target_home/private does not exist yet; create it so the watch applies."
+
+  sudo mkdir -p /etc/access-watch
+  sudo chmod 700 /etc/access-watch
+  if sudo test -f /etc/access-watch/telegram.conf; then
+    log "/etc/access-watch/telegram.conf already exists (left as-is)."
+  elif [ -f "$CFG_DIR/telegram.conf" ]; then
+    sudo install -m 0600 "$CFG_DIR/telegram.conf" /etc/access-watch/telegram.conf
+  else
+    sudo install -m 0600 "$REPO_DIR/config/telegram.conf.example" /etc/access-watch/telegram.conf
+    warn "Created /etc/access-watch/telegram.conf from template; edit it with sudo."
+  fi
+
+  sudo install -m 0700 "$REPO_DIR/audit/audit-telegram.sh" /usr/local/sbin/audit-telegram.sh
+
+  sed "s|@HOME@|${target_home}|g" "$REPO_DIR/audit/access-watch.rules" \
+    | sudo tee /etc/audit/rules.d/access-watch.rules >/dev/null
+  sudo chmod 0640 /etc/audit/rules.d/access-watch.rules
+
+  local plugin_dir=/etc/audit/plugins.d
+  sudo test -d "$plugin_dir" || plugin_dir=/etc/audisp/plugins.d
+  sudo install -m 0640 "$REPO_DIR/audit/audisp-telegram.conf" "$plugin_dir/audisp-telegram.conf"
+
+  sudo augenrules --load
+  sudo systemctl restart auditd || sudo service auditd restart
+  log "auditd layer installed. Rules: /etc/audit/rules.d/access-watch.rules"
+  exit 0
+}
+
 [ "${1:-}" = "--uninstall" ] && uninstall
+[ "${1:-}" = "--audit" ] && install_audit
 
 # --- 1. scripts ---
 log "Installing scripts to $SHARE_DIR"

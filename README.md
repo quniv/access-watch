@@ -20,7 +20,7 @@ quietly erase than local log files.
 ## Install (user-level, no root for the core)
 
 ```bash
-git clone https://github.com/<you>/access-watch.git
+git clone https://github.com/quniv/access-watch.git
 cd access-watch
 ./install.sh
 # edit ~/.config/access-watch/telegram.conf with your BOT_TOKEN and CHAT_ID
@@ -39,16 +39,21 @@ account) and reads of your files. It runs as root.
 
 ```bash
 sudo apt install -y auditd audispd-plugins
-sudo mkdir -p /etc/access-watch
-sudo cp config/telegram.conf.example /etc/access-watch/telegram.conf
-sudo chmod 600 /etc/access-watch/telegram.conf   # then edit it
-sudo install -m700 audit/audit-telegram.sh /usr/local/sbin/audit-telegram.sh
-sudo cp audit/access-watch.rules /etc/audit/rules.d/access-watch.rules
-sudo cp audit/audisp-telegram.conf /etc/audit/plugins.d/audisp-telegram.conf
-# edit the rules file: set your private path and 'it' uid (id -u it)
-sudo augenrules --load
-sudo systemctl restart auditd
+./install.sh --audit
 ```
+
+Run it as your normal user (not via `sudo`); it calls `sudo` itself. It:
+
+- renders `audit/access-watch.rules` with your `$HOME` in place of `@HOME@`
+  (set `AW_HOME=/some/home` to override) and loads it with `augenrules`;
+- copies your `~/.config/access-watch/telegram.conf` (or the example) to
+  `/etc/access-watch/telegram.conf` with mode 600, if not already there;
+- installs `audit-telegram.sh` and the dispatcher plugin, then restarts auditd.
+
+The rules watch `$HOME/private` (create it first). To also log every command
+run by the `it` account, uncomment the `aw_it_exec` lines in
+`/etc/audit/rules.d/access-watch.rules`, set `UID_IT` (`id -u it`), and run
+`sudo augenrules --load`.
 
 ## Honest limitations
 
