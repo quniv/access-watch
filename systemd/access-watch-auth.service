@@ -1,0 +1,12 @@
+[Unit]
+Description=access-watch realtime auth monitor (-> Telegram)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/share/access-watch/scripts/watch-auth.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

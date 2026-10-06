@@ -1,0 +1,6 @@
+[Unit]
+Description=access-watch periodic state check (-> Telegram)
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/access-watch/scripts/watch-state.sh

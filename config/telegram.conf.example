@@ -1,0 +1,17 @@
+# Copy this file to ~/.config/access-watch/telegram.conf and fill in your values.
+# Then lock it down:   chmod 600 ~/.config/access-watch/telegram.conf
+#
+# Get BOT_TOKEN from @BotFather on Telegram (/newbot).
+# Get CHAT_ID by messaging your bot once, then opening:
+#   https://api.telegram.org/bot<BOT_TOKEN>/getUpdates
+# and reading result[].message.chat.id
+
+BOT_TOKEN="123456789:AA-replace-with-your-bot-token"
+CHAT_ID="123456789"
+
+# Optional: comma-separated usernames to treat as "foreign" (alert on any activity).
+# Leave empty to disable. Example: WATCH_USERS="it,quniv"
+WATCH_USERS="it"
+
+# Optional: label shown in alerts. Defaults to hostname if empty.
+HOST_LABEL=""
