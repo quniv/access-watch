@@ -51,7 +51,13 @@ install_audit() {
     exit 1
   fi
 
-  log "Installing auditd layer for home: $target_home"
+  local target_uid="${AW_UID:-$(stat -c %u "$target_home" 2>/dev/null || true)}"
+  if ! [[ $target_uid =~ ^[0-9]+$ ]] || [ "$target_uid" -eq 0 ]; then
+    warn "Could not determine a non-root owner uid for $target_home; set AW_UID."
+    exit 1
+  fi
+
+  log "Installing auditd layer for home: $target_home (uid $target_uid)"
   [ -d "$target_home/private" ] || warn "$target_home/private does not exist yet; create it so the watch applies."
 
   sudo mkdir -p /etc/access-watch
@@ -67,7 +73,8 @@ install_audit() {
 
   sudo install -m 0700 "$REPO_DIR/audit/audit-telegram.sh" /usr/local/sbin/audit-telegram.sh
 
-  sed "s|@HOME@|${target_home}|g" "$REPO_DIR/audit/access-watch.rules" \
+  sed -e "s|@HOME@|${target_home}|g" -e "s|@UID@|${target_uid}|g" \
+      "$REPO_DIR/audit/access-watch.rules" \
     | sudo tee /etc/audit/rules.d/access-watch.rules >/dev/null
   sudo chmod 0640 /etc/audit/rules.d/access-watch.rules
 
@@ -100,6 +107,15 @@ if [ ! -f "$CFG_DIR/telegram.conf" ]; then
   warn "EDIT IT NOW with your BOT_TOKEN and CHAT_ID before starting the service."
 else
   log "Config already exists at $CFG_DIR/telegram.conf (left as-is)."
+fi
+
+# Record who owns this machine so the owner's own local activity is not
+# alerted on. Only fills it in when missing or empty; never overrides.
+OWNER_NAME="$(id -un)"
+if ! grep -qE '^OWNER_USER="[^"]+"' "$CFG_DIR/telegram.conf"; then
+  sed -i '/^OWNER_USER=/d' "$CFG_DIR/telegram.conf"
+  printf 'OWNER_USER="%s"\n' "$OWNER_NAME" >> "$CFG_DIR/telegram.conf"
+  log "Set OWNER_USER=\"$OWNER_NAME\" in $CFG_DIR/telegram.conf"
 fi
 
 # --- 3. systemd user units ---

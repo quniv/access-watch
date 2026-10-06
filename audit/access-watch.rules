@@ -1,6 +1,12 @@
 ## access-watch audit rules (OPTIONAL, root-level)
 ## Installed by: ./install.sh --audit
-## @HOME@ is replaced with the installing user's $HOME (override with AW_HOME).
+## Placeholders filled in at install time:
+##   @HOME@  the owner's home (installing user's $HOME, or AW_HOME)
+##   @UID@   the owner's uid (owner of that home, or AW_UID)
+## "auid!=@UID@" skips actions from sessions the owner logged into (including
+## their own sudo), so your daily use of your own files is not reported. A
+## different login (e.g. 'it' then `sudo -u you`) keeps its auid and IS
+## reported. Someone logged in AS you is caught by the login alerts instead.
 ##
 ## auditd runs as root and can see actions by ALL users, including 'it'.
 ## It is the only layer here that can observe a higher-privileged user's
@@ -11,20 +17,20 @@
 
 ## --- Watch access to your private data directory (create it first) ---
 ## Change the path to the directory you actually keep private files in.
--w @HOME@/private -p rwxa -k aw_private
+-a always,exit -F dir=@HOME@/private -F perm=rwxa -F auid!=@UID@ -k aw_private
 
 ## --- Watch reads of your shell history and ssh keys ---
--w @HOME@/.bash_history -p rwa -k aw_sensitive
--w @HOME@/.ssh -p rwa -k aw_sensitive
+-a always,exit -F path=@HOME@/.bash_history -F perm=rwa -F auid!=@UID@ -k aw_sensitive
+-a always,exit -F dir=@HOME@/.ssh -F perm=rwa -F auid!=@UID@ -k aw_sensitive
 
-## --- Every use of sudo ---
--w /usr/bin/sudo -p x -k aw_sudo
+## --- Every use of sudo by someone other than the owner ---
+-a always,exit -F path=/usr/bin/sudo -F perm=x -F auid!=@UID@ -k aw_sudo
 
 ## --- Every command executed by user 'it' (replace UID_IT with: id -u it) ---
 ## Uncomment and set the real uid:
 # -a always,exit -F arch=b64 -F uid=UID_IT -S execve -k aw_it_exec
 # -a always,exit -F arch=b32 -F uid=UID_IT -S execve -k aw_it_exec
 
-## --- Changes to firewall tooling ---
--w /usr/sbin/ufw -p x -k aw_firewall
--w /usr/sbin/nft -p x -k aw_firewall
+## --- Firewall tooling run by someone other than the owner ---
+-a always,exit -F path=/usr/sbin/ufw -F perm=x -F auid!=@UID@ -k aw_firewall
+-a always,exit -F path=/usr/sbin/nft -F perm=x -F auid!=@UID@ -k aw_firewall

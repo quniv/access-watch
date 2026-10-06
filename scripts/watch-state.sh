@@ -32,15 +32,32 @@ notify_if_changed() {
   fi
 }
 
-# --- Who is logged in right now ---
-CUR_WHO="$(who 2>/dev/null || true)"
+# filter_who: drop trusted users' LOCAL sessions from `who` output. A session
+# whose host field is a remote address is kept even for the owner. Local host
+# fields look like "(:0)", "(tty2)", "(login screen)" or are absent.
+filter_who() {
+  local line u host
+  while IFS= read -r line; do
+    u="${line%% *}"
+    host=""
+    [[ $line =~ \(([^\)]*)\)[[:space:]]*$ ]] && host="${BASH_REMATCH[1]}"
+    case "$host" in
+      ""|:*|tty*|*" "*) is_trusted_user "$u" && continue ;;
+    esac
+    printf '%s\n' "$line"
+  done
+}
+
+# --- Who is logged in right now (others, or anyone from a remote host) ---
+CUR_WHO="$(who 2>/dev/null | filter_who || true)"
 notify_if_changed "who" "$CUR_WHO" "🔐 <b>${HOST}</b>: login sessions changed"
 
 # --- Established remote-desktop connections (not just listening) ---
 CUR_RDP="$(ss -tnp 2>/dev/null | grep -iE ':3389|:5900|:5938' | grep -vi listen || true)"
 notify_if_changed "rdp" "$CUR_RDP" "🖥️ <b>${HOST}</b>: remote-desktop connection"
 
-# --- Remote-access processes running ---
+# --- Remote-access processes running (deliberately NOT filtered by owner:
+# a RustDesk/VNC running as you is still a way in) ---
 CUR_PROC="$(ps -eo user,pid,cmd 2>/dev/null \
   | grep -iE 'rustdesk|anydesk|teamviewer|x11vnc|vino|xrdp' \
   | grep -v grep || true)"

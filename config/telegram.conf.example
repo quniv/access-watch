@@ -13,5 +13,14 @@ CHAT_ID="123456789"
 # Leave empty to disable. Example: WATCH_USERS="it,quniv"
 WATCH_USERS="it"
 
+# The user this machine belongs to. Their own LOCAL activity (sudo, console /
+# GUI sessions) is not alerted on; anything from a remote host still is, even
+# as this user. install.sh fills this in; empty means "the user running the
+# watcher".
+OWNER_USER=""
+
+# Optional: comma-separated extra users treated like OWNER_USER (e.g. "gdm").
+ALLOW_USERS=""
+
 # Optional: label shown in alerts. Defaults to hostname if empty.
 HOST_LABEL=""

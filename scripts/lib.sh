@@ -14,6 +14,22 @@ source "$CONFIG_FILE"
 : "${CHAT_ID:?CHAT_ID not set in config}"
 
 HOST="${HOST_LABEL:-$(hostname)}"
+OWNER="${OWNER_USER:-$(id -un)}"
+
+# is_trusted_user <name>: true for the owner and anyone in ALLOW_USERS.
+# Trusted users are only silenced for LOCAL activity; callers must still
+# alert on anything coming from a remote host.
+is_trusted_user() {
+  local u="$1" a
+  [ -n "$u" ] || return 1
+  [ "$u" = "$OWNER" ] && return 0
+  IFS=',' read -ra _aw_allow <<< "${ALLOW_USERS:-}"
+  for a in "${_aw_allow[@]}"; do
+    a="${a// /}"
+    [ -n "$a" ] && [ "$u" = "$a" ] && return 0
+  done
+  return 1
+}
 
 # send <html-text>
 send() {
